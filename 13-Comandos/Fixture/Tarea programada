@@ -1,0 +1,83 @@
+Tengo que programar la tarea de `migrate:fresh --seed` al inicio de cada mes usando 'Task Scheduling' Laravel 10.
+
+### 1. Crear un comando de Laravel personalizado (opcional, si quieres hacerlo más limpio)
+
+Aunque no es obligatorio, te recomiendo crear un comando de Laravel para que sea más fácil de manejar y mantener.
+
+Abre tu terminal y corre el siguiente comando para crear un nuevo comando:
+
+```bash
+php artisan make:command MigrateFreshWithSeed
+```
+
+Esto generará un archivo en `app/Console/Commands/MigrateFreshWithSeed.php`.
+
+Abre ese archivo y en su interior, modifica la propiedad `$signature` y la lógica del comando.
+
+```php
+namespace App\Console\Commands;
+
+use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Artisan;
+
+class MigrateFreshWithSeed extends Command
+{
+
+    protected $signature = 'migrate:fresh-seed';
+
+    protected $description = 'Run migrate:fresh --seed';
+
+    public function handle()
+    {
+        $this->info('Migrating fresh and seeding...');
+
+        // Ejecutar el comando migrate:fresh con --seed como parámetro
+        Artisan::call('migrate:fresh', ['--seed' => true]);
+
+        $this->info('Migration and seeding completed!');
+    }
+}
+```
+
+Este comando personalizado simplemente llama al comando `migrate:fresh --seed` que deseas ejecutar.
+
+### 2. Programar la Tarea en el Scheduler
+
+Ahora abre `app/Console/Kernel.php` y en la función `schedule` agrega la tarea para que se ejecute el primer día de cada mes:
+
+```php
+use Illuminate\Console\Scheduling\Schedule;
+use Illuminate\Foundation\Console\Kernel as ConsoleKernel;
+
+class Kernel extends ConsoleKernel
+{
+    protected function schedule(Schedule $schedule)
+    {
+        // Programar el comando para que se ejecute el primer día de cada mes
+        $schedule->command('migrate:fresh-seed')->monthlyOn(1, '00:00');
+    }
+
+    // Otras funciones...
+}
+```
+
+Este código le dice a Laravel que ejecute el comando `migrate:fresh-seed` el primer día de cada mes a las 00:00 (medianoche).
+
+### 3. Configuración del Cron
+
+Para que el Scheduler de Laravel funcione, necesitas configurar un cron job en tu servidor. Abre tu terminal y ejecuta:
+
+```bash
+crontab -e
+```
+
+Y agrega la siguiente línea al archivo cron:
+
+```bash
+* * * * * php /ruta/a/tu/proyecto/artisan schedule:run >> /dev/null 2>&1
+```
+
+Asegúrate de reemplazar `/ruta/a/tu/proyecto` con la ruta correcta a tu aplicación Laravel. Esto hará que Laravel verifique cada minuto si hay alguna tarea programada que ejecutar.
+
+
+

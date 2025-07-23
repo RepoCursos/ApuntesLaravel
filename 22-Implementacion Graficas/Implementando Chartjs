@@ -1,0 +1,134 @@
+Crear una grafica con AdminLTE y Chart.js
+
+Codigo de ChatGpt
+Para mostrar la cantidad de partidos jugados por mes en una gráfica utilizando Chart.js en una aplicación monolítica con Laravel, debes seguir varios pasos. A continuación te guiaré para que puedas pasar los datos del controlador a la vista Blade y luego renderizar la gráfica con los datos correspondientes.
+
+/------------------------------------------------------------------------------------/
+Paso 1: Controlador
+
+Primero, necesitas recuperar la información de la base de datos. Suponiendo que tienes una tabla partidos con una columna fecha, puedes agrupar los partidos por mes y año utilizando la función groupBy en Laravel.
+
+//Cod Contolador
+namespace App\Http\Controllers;
+
+use App\Models\Partido;
+use Illuminate\Http\Request;
+
+class PartidoController extends Controller
+{
+    public function index()
+    {
+        // Obtener la cantidad de partidos por mes
+        $partidosPorMes = Partido::selectRaw('YEAR(fecha) as year, MONTH(fecha) as month, COUNT(*) as cantidad')
+            ->groupBy('year', 'month')
+            ->orderBy('year', 'asc')
+            ->orderBy('month', 'asc')
+            ->get();
+
+        // Pasar los datos a la vista
+        return view('partidos.index', compact('partidosPorMes'));
+    }
+}
+
+/-------------------------------------------------------------------------------------------------------------------------------/
+
+Paso 2: Vista Blade
+
+Luego, en tu vista partidos/index.blade.php, necesitas pasar los datos de partidosPorMes a Chart.js. A continuación te muestro cómo estructurar la vista Blade para crear la gráfica.
+
+//Cod vista blade basica lo importante es el "script"
+
+@extends('layouts.app')
+
+@section('content')
+<div class="container">
+    <h1>Cantidad de Partidos por Mes</h1>
+
+    <!-- Crear un contenedor para el gráfico -->
+    <canvas id="partidosChart"></canvas>
+</div>
+@endsection
+
+@section('js')
+//NOTA:Este enlace de script lo encontramos en: Config/adminlte.php y luego ubicamos el siguiente codigo:
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script> 
+/*
+'Chartjs' => [
+            'active' => true, //esta en false, lo cambiamos a true
+            'files' => [
+                [
+                    'type' => 'js',
+                    'asset' => false,
+                    'location' => '//cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js', //copiamos esta direccion
+                ],
+            ],
+        ],
+*/
+//para ver si funciona hacemos un console.log y vemos la version con el siguiente codigo:
+<script> console.log(Chart.version); </script>
+
+//script importante para armar la grafica
+<script>
+    // Obtener los datos de PHP a JavaScript
+    const partidosPorMes = @json($partidosPorMes);
+
+    // Preparar los datos para el gráfico
+    const meses = partidosPorMes.map(partido => {
+        const date = new Date(partido.year, partido.month - 1);
+        return date.toLocaleString('default', { month: 'long', year: 'numeric' });
+    });
+
+    const cantidadPartidos = partidosPorMes.map(partido => partido.cantidad);
+
+    // Crear el gráfico
+    const ctx = document.getElementById('partidosChart').getContext('2d');
+    const partidosChart = new Chart(ctx, {
+        type: 'line',  // Tipo de gráfico: 'line' para gráfico de líneas
+        data: {
+            labels: meses,  // Eje X: Meses
+            datasets: [{
+                label: 'Cantidad de Partidos',
+                data: cantidadPartidos,  // Eje Y: Cantidad de partidos
+                borderColor: 'rgb(75, 192, 192)',
+                backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                fill: true,  // Para un gráfico con área de relleno
+                tension: 0.4  // Curvatura de la línea
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: {
+                    beginAtZero: true,  // Asegura que el eje Y comienza en 0
+                }
+            }
+        }
+    });
+</script>
+@endsection
+
+/-------------------------------------------------------------------------------------------/
+
+Paso 3: Asegurarte de que la ruta esté configurada
+
+Asegúrate de que la ruta en el archivo de rutas (web.php) esté correctamente definida para acceder al controlador.
+
+//Graficas
+Route::get('/layouts/admin', [GraficoController::class, 'cards'])->name('dashboard');
+
+/---------------------------------------------------------------------------------------------------/
+
+Explicación del código
+
+    Recuperación de los datos: En el controlador, estamos usando una consulta selectRaw para agrupar los partidos por year y month y contar la cantidad de partidos jugados en cada mes.
+
+    Pasar datos a la vista: Los datos se pasan a la vista usando el helper @json, que convierte el array de objetos $partidosPorMes a un formato que JavaScript puede usar.
+
+    Gráfico con Chart.js:
+        El gráfico es de tipo línea (type: 'line').
+        Usamos partidosPorMes.map para preparar los datos del gráfico. En el eje X (labels), ponemos el mes y año, y en el eje Y (data), la cantidad de partidos.
+        El gráfico tiene un diseño con líneas suaves (tension: 0.4) y un área de relleno.
+
+    Renderización de la gráfica: Utilizamos un <canvas> con el id partidosChart para renderizar la gráfica. Luego, en el script, seleccionamos el contexto de ese canvas y creamos la gráfica con Chart.js.
+
+

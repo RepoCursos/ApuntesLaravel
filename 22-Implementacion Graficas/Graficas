@@ -1,0 +1,1006 @@
+//YO
+Estoy haciendo una web monolito en laravel 10 con plantillas blade, tengo que hacer grafica usando chsrts.js,
+se tiene que reflejar la cantidad de partidos jugados por torneo.
+
+/---------------- Mi codigo con error --------------------------------------------------/
+//Vistas
+<div class="row">
+	<div class="col-xl-6">
+		<div class="card mb-4">
+			<div class="card-header">
+				<i class="fas fa-chart-area me-1"></i>
+				Area Chart Example
+			</div>
+			<div class="card-body">
+				<canvas id="partidosChart" width="100%" height="40"></canvas>
+			</div>
+		</div>
+	</div>
+	<div class="col-xl-6">
+		<div class="card mb-4">
+			<div class="card-header">
+				<i class="fas fa-chart-bar me-1"></i>
+				Bar Chart Example
+			</div>
+			<div class="card-body">
+				<canvas id="myBarChart" width="100%" height="40"></canvas>
+			</div>
+		</div>
+	</div>
+</div>
+
+@extends('layouts.app')
+@section('title', 'Dashboard')
+@section('content_body')
+<div class="container-fluid px-4">
+	<h1 class="mt-4">Dashboard</h1>
+	<!-- tarjetas -->
+	@include('admin._partials.tarjetas')
+
+	<!-- graficas -->
+	@include('admin._partials.graficos')
+</div>
+@endsection
+
+@section('js')
+<script>
+	console.log(Chart.version);
+</script>
+<script>
+	// Obtener los datos de PHP a JavaScript
+	const partidosPorMes = @json($partidosPorMes);
+	console.log(partidosPorMes);
+	// Preparar los datos para el gráfico
+	const meses = partidosPorMes.map(partido => {
+		const date = new Date(partido.year, partido.month - 1);
+		return date.toLocaleString('default', {
+			month: 'long',
+			year: 'numeric'
+		});
+	});
+
+	const cantidadPartidos = partidosPorMes.map(partido => partido.cantidad);
+
+	// Crear el gráfico
+	const ctx = document.getElementById('partidosChart').getContext('2d');
+	const partidosChart = new Chart(ctx, {
+		type: 'line', // Tipo de gráfico: 'line' para gráfico de líneas
+		data: {
+			labels: meses, // Eje X: Meses
+			datasets: [{
+				label: 'Cantidad de Partidos',
+				data: cantidadPartidos, // Eje Y: Cantidad de partidos
+				borderColor: 'rgb(75, 192, 192)',
+				backgroundColor: 'rgba(75, 192, 192, 0.2)',
+				fill: true, // Para un gráfico con área de relleno
+				tension: 0.4 // Curvatura de la línea
+			}]
+		},
+		options: {
+			responsive: true,
+			scales: {
+				y: {
+					beginAtZero: true, // Asegura que el eje Y comienza en 0
+				}
+			}
+		}
+	});
+</script>
+<script>
+	var ctx = document.getElementById('myBarChart').getContext('2d');
+	var myChart = new Chart(ctx, {
+		type: 'bar', // Tipo de gráfico, puede ser 'bar', 'line', 'pie', etc.
+		data: {
+			labels: @json($labels), // Los nombres de los torneos
+			datasets: [{
+				label: 'Cantidad de Partidos',
+				data: @json($data), // Cantidad de partidos por torneo
+				backgroundColor: 'rgba(75, 192, 192, 0.2)',
+				borderColor: 'rgba(75, 192, 192, 1)',
+				borderWidth: 1
+			}]
+		},
+		options: {
+			responsive: true,
+			scales: {
+				y: {
+					beginAtZero: true, // Asegura que el eje Y comienza en 0
+				}
+			}
+		}
+	});
+</script>
+@endsection
+
+//Modelos
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
+
+class Torneo extends Model
+{
+	use HasFactory;
+	use SoftDeletes;
+
+	protected $fillable = ['nombre', 'tipo', 'inscripcion', 'valor_cancha', 'fecha', 'ubicacion', 'cant_equipos', 'premios', 'reglas_gral', 'sis_competicion', 'elegibilidad', 'disciplina', 'publicado'];
+
+	public function equipos(): HasMany
+	{
+		return $this->hasMany(Equipo::class);
+	}
+}
+?>
+
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
+
+class Equipo extends Model
+{
+	use HasFactory;
+	use SoftDeletes;
+
+	protected $fillable = ['file_uri', 'nombre', 'estado', 'torneo_id'];
+
+	public function torneo(): BelongsTo
+	{
+		return $this->belongsTo(Torneo::class);
+	}
+
+	public function jugadores(): HasMany
+	{
+		return $this->hasMany(Jugador::class);
+	}
+
+	public function partidos(): BelongsToMany
+	{
+		return $this->belongsToMany(Partido::class)
+			->withPivot('resultado', 'golesF', 'golesE', 'estado')
+			->withTimestamps();
+	}
+}
+?>
+
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
+
+class Partido extends Model
+{
+	use HasFactory;
+	use SoftDeletes;
+
+	protected $fillable = ['fecha', 'hora', 'importe', 'estado', 'arbitro_id', 'cancha_id'];
+
+	public function arbitro(): BelongsTo
+	{
+		return $this->belongsTo(Arbitro::class)->withDefault();
+	}
+
+	public function cancha(): BelongsTo
+	{
+		return $this->belongsTo(Cancha::class);
+	}
+
+	public function equipos(): BelongsToMany
+	{
+		return $this->belongsToMany(Equipo::class)
+			->withPivot('resultado', 'golesF', 'golesE', 'estado')
+			->withTimestamps();
+	}
+
+	public function jugadores(): BelongsToMany
+	{
+		return $this->belongsToMany(Jugador::class)
+			->withPivot('goles', 'asistencias', 'promedio', 'valor_tarjeta', 'estado', 'tarjeta_id')
+			->withTimestamps();
+	}
+}
+?>
+
+<?php
+//Base de datos
+Schema::create('torneos', function (Blueprint $table) {
+	$table->id();
+	$table->string('nombre');
+	$table->double('inscripcion', 8, 2);
+	$table->double('valor_cancha', 8, 2);
+	$table->date('fecha')->nullable();
+	$table->string('ubicacion')->nullable();
+	$table->integer('cant_equipos')->nullable();
+	$table->string('premios')->nullable();
+	$table->text('reglas_gral')->nullable();
+	$table->text('sis_competicion')->nullable();
+	$table->text('elegibilidad')->nullable();
+	$table->text('disciplina')->nullable();
+	$table->boolean('publicado')->default(0);
+	$table->softDeletes();
+	$table->timestamps();
+});
+
+Schema::create('equipos', function (Blueprint $table) {
+	$table->id();
+	$table->string("file_uri")->nullable();
+	$table->string('nombre');
+	$table->enum('estado', ["Pendiente", "Pagado"])->default('Pendiente');
+	$table->foreignId('torneo_id')->constrained('torneos')->onDelete('cascade');
+	$table->softDeletes();
+	$table->timestamps();
+});
+
+Schema::create('partidos', function (Blueprint $table) {
+	$table->id();
+	$table->date('fecha');
+	$table->time('hora');
+	$table->decimal('importe', 8, 2); //es para el Arbitro
+	$table->enum('estado', ["Pendiente", "Pagado"])->default('Pendiente'); //es para el Arbitro
+
+	$table->foreignId('arbitro_id')->constrained('arbitros')->onDelete('cascade');
+	$table->foreignId('cancha_id')->constrained('canchas')->onDelete('cascade');
+	$table->softDeletes();
+	$table->timestamps();
+});
+
+Schema::create('equipo_partido', function (Blueprint $table) {
+	$table->id();
+	$table->enum('resultado', ["G", "E", "P"])->nullable();
+	$table->integer('golesF')->nullable();
+	$table->integer('golesE')->nullable();
+	$table->enum('estado', ["Pendiente", "Pagado"])->default('Pendiente'); //Refleja el pago de la cancha de ese partido
+
+	$table->foreignId('partido_id')->constrained('partidos')->onDelete('cascade');
+	$table->foreignId('equipo_id')->constrained('equipos')->onDelete('cascade');
+	$table->softDeletes();
+	$table->timestamps();
+});
+?>
+
+<?php
+
+namespace App\Http\Controllers\chart;
+
+use App\Http\Controllers\Controller;
+use App\Models\JugadorPartido;
+use App\Models\Partido;
+use App\Models\Torneo;
+use Illuminate\Contracts\Database\Eloquent\Builder;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+
+class GraficoController extends Controller
+{
+	public function cards()
+	{
+
+		$partidosPorMes = Partido::selectRaw('YEAR(fecha) as year, MONTH(fecha) as month, COUNT(*) as cantidad')
+			->groupBy('year', 'month')
+			->orderBy('year', 'asc')
+			->orderBy('month', 'asc')
+			->get();
+
+
+		$detallePartidos = (object)[
+			'asistencia' => JugadorPartido::where('asistencias', '>', 0)->sum('asistencias'),
+			'goles'      => JugadorPartido::where('goles', '>', 0)->sum('goles'),
+			'amarillas'  => JugadorPartido::where('tarjeta_id', '1')->count(),
+			'rojas'      => JugadorPartido::where('tarjeta_id', '2')->count(),
+		];
+
+
+		$torneos = Torneo::withCount('equipos.partidos')->get();
+
+		$labels = $torneos->pluck('nombre'); // Nombres de los torneos
+		$data = $torneos->pluck('partidos_count'); // Cantidad de partidos
+
+		return view('admin.dashboard', compact('detallePartidos', 'partidosPorMes', 'labels', 'data'));
+	}
+}
+?>
+
+/---------------- fin Mi codigo con error --------------------------------------------------/
+
+ChatGPT:
+¡Tu código se ve bien en general! Sin embargo, te señalaré algunas posibles áreas de mejora y también algunas correcciones
+que podrían ser necesarias para que la funcionalidad se ejecute correctamente.
+Revisión del Código
+
+Gráfico de Partidos por Mes (Line Chart)
+El código parece correcto, pero asegúrate de que el formato de fecha que recibes de $partidosPorMes sea compatible con el formato
+esperado por JavaScript (Date).
+Verifica en tu controlador que los datos estén correctamente estructurados, algo como esto:
+
+$partidosPorMes = Partido::selectRaw('YEAR(fecha) as year, MONTH(fecha) as month, COUNT(*) as cantidad')
+->groupBy('year', 'month')
+->orderBy('year', 'asc')
+->orderBy('month', 'asc')
+->get();
+
+Deberías asegurarte de que el valor de year y month en la respuesta esté correctamente formateado y devuelto como un arreglo
+JSON en el JavaScript de tu vista Blade.
+
+Gráfico de Partidos por Torneo (Bar Chart)
+El código parece correcto, pero también verifica que las variables $labels y $data estén correctamente formateadas en el controlador
+y se pasen a la vista Blade correctamente. Las claves $labels y $data deberían estar siendo pasadas en forma de arrays o colecciones
+que se convierten a JSON correctamente.
+
+En tu controlador:
+
+$labels = $torneos->pluck('nombre')->toArray(); // Asegúrate de convertirlo a array
+$data = $torneos->pluck('partidos_count')->toArray();
+
+Y en tu vista Blade:
+
+labels: @json($labels), // Los nombres de los torneos
+data: @json($data) // Cantidad de partidos por torneo
+
+Esto debería funcionar correctamente, pero asegúrate de que las claves partidos_count estén bien definidas en la relación withCount
+de tu modelo Torneo.
+
+Problemas Potenciales con la Lógica en el Controlador:
+
+Asegúrate de que la relación entre Torneo y Partido esté bien configurada. Usas equipos.partidos para contar los partidos, lo cual significa
+que la relación equipos debe tener una relación bien definida con partidos.
+Si Partido no está relacionado directamente con Torneo a través de la relación equipos, necesitarás ajustar la lógica del withCount para
+contar correctamente los partidos por torneo.
+
+Posibles Mejoras en la Configuración de la Vista Blade:
+En la configuración de canvas de los gráficos, en el atributo height, podrías considerar un valor más adecuado que 40, que es muy
+pequeño para visualizar un gráfico. Un valor común podría ser 150 o algo similar dependiendo del tamaño que desees:
+
+<canvas id="partidosChart" width="100%" height="150"></canvas>
+<canvas id="myBarChart" width="100%" height="150"></canvas>
+
+Resumen de los Posibles Cambios:
+
+Controlador: Asegúrate de que los datos se pasen correctamente a la vista en formato JSON:
+
+$labels = $torneos->pluck('nombre')->toArray(); // Convertir a array
+$data = $torneos->pluck('partidos_count')->toArray(); // Convertir a array
+
+Vista Blade: Verifica que los datos se pasen correctamente a JavaScript como JSON:
+
+const partidosPorMes = @json($partidosPorMes);
+const labels = @json($labels);
+const data = @json($data);
+
+Altura del gráfico: Asegúrate de ajustar la altura del gráfico para una visualización adecuada:
+
+<canvas id="partidosChart" width="100%" height="150"></canvas>
+<canvas id="myBarChart" width="100%" height="150"></canvas>
+
+Con estas pequeñas modificaciones y verificaciones, tu gráfico debería funcionar correctamente.
+FIN.
+
+//Tú dijiste:
+Partido no está relacionado directamente con Torneo a través de la relación equipos
+FIN.
+
+ChatGPT:
+Entiendo, si el modelo Partido no está directamente relacionado con Torneo a través de la relación equipos, necesitas ajustar la forma en que
+obtienes la cantidad de partidos por torneo. Como los partidos están relacionados a través de Equipo, necesitarás navegar por las relaciones
+de forma diferente.
+Cómo solucionar esto:
+Puedes modificar el controlador para obtener la cantidad de partidos por torneo de una forma más adecuada. La forma más sencilla es
+hacer un conteo de los partidos a través de los equipos asociados con cada torneo.
+Opciones para obtener los partidos por torneo:
+1. Usar una consulta con relación intermedia (Equipos y luego Partidos):
+Si deseas contar los partidos a través de la relación de equipos, puedes hacerlo utilizando hasManyThrough. Laravel proporciona
+esta relación para acceder a los partidos a través de Equipo.
+Primero, asegúrate de que tu modelo Torneo tenga la relación hasManyThrough correctamente configurada para acceder a los partidos
+de cada torneo.
+Así puedes contar los partidos de cada torneo.
+
+2. Agregar la relación hasManyThrough en el modelo Torneo:
+En tu modelo Torneo, puedes definir una relación hasManyThrough para acceder a los partidos directamente a través de los equipos.
+// En el modelo Torneo
+namespace App\Models;
+use Illuminate\Database\Eloquent\Model;
+
+class Torneo extends Model
+{
+public function partidos()
+{
+return $this->hasManyThrough(Partido::class, Equipo::class);
+}
+}
+
+Con esta relación, puedes obtener todos los partidos de un torneo a través de sus equipos.
+
+3. Modificar el controlador para contar los partidos:
+Ahora que tienes la relación configurada, puedes obtener los partidos directamente en tu controlador utilizando esta
+relación hasManyThrough.
+Aquí te muestro cómo ajustar el controlador para contar los partidos por torneo:
+
+namespace App\Http\Controllers\Chart;
+
+use App\Http\Controllers\Controller;
+use App\Models\JugadorPartido;
+use App\Models\Partido;
+use App\Models\Torneo;
+use Illuminate\Http\Request;
+
+class GraficoController extends Controller
+{
+public function cards()
+{
+// Obtener partidos por mes
+$partidosPorMes = Partido::selectRaw('YEAR(fecha) as year, MONTH(fecha) as month, COUNT(*) as cantidad')
+->groupBy('year', 'month')
+->orderBy('year', 'asc')
+->orderBy('month', 'asc')
+->get();
+
+// Datos adicionales (asistencias, goles, tarjetas)
+$detallePartidos = (object)[
+'asistencia' => JugadorPartido::where('asistencias', '>', 0)->sum('asistencias'),
+'goles' => JugadorPartido::where('goles', '>', 0)->sum('goles'),
+'amarillas' => JugadorPartido::where('tarjeta_id', '1')->count(),
+'rojas' => JugadorPartido::where('tarjeta_id', '2')->count(),
+];
+
+// Obtener torneos con la cantidad de partidos a través de la relación `hasManyThrough`
+$torneos = Torneo::withCount('partidos')->get(); // Aquí obtenemos la cantidad de partidos por torneo
+
+// Preparar los datos para los gráficos
+$labels = $torneos->pluck('nombre'); // Nombres de los torneos
+$data = $torneos->pluck('partidos_count'); // Cantidad de partidos
+
+// Retornar la vista con los datos
+return view('admin.dashboard', compact('detallePartidos', 'partidosPorMes', 'labels', 'data'));
+}
+}
+
+Resumen:
+Relación hasManyThrough: En el modelo Torneo, agregamos la relación hasManyThrough para acceder a los partidos a través de los
+equipos asociados.
+
+public function partidos()
+{
+return $this->hasManyThrough(Partido::class, Equipo::class);
+}
+
+Conteo de partidos en el controlador: En el controlador, ahora podemos contar los partidos de cada torneo utilizando la relación
+partidos_count.
+
+$torneos = Torneo::withCount('partidos')->get();
+
+Visualización en la vista: Los datos para los gráficos se pasan correctamente con $labels y $data.
+Esto debería solucionar el problema y permitirte obtener y visualizar la cantidad de partidos por torneo en tu gráfico de barras.
+FIN.
+
+Tú dijiste:
+SQLSTATE[42S22]: Column not found: 1054 Unknown column 'partidos.equipo_id' in 'on clause'
+FIN.
+
+ChatGPT
+El error que estás recibiendo (Unknown column 'partidos.equipo_id' in 'on clause') indica que hay un problema con la consulta generada por la
+relación hasManyThrough. Este error surge porque hasManyThrough está intentando hacer una consulta utilizando una columna equipo_id en la tabla
+partidos, que no existe. Esto ocurre porque la relación entre Torneo, Equipo y Partido no está configurada de la manera que se espera.
+Solución:
+
+Dado que los partidos están relacionados con los equipos y los equipos están relacionados con los torneos, la relación hasManyThrough no es la
+mejor opción en este caso. En lugar de eso, debemos usar una consulta que aproveche las relaciones intermedias (Equipo y Partido) para contar
+los partidos de cada torneo.
+
+Te propongo una solución utilizando join y groupBy para contar los partidos de cada torneo a través de los equipos.
+Paso 1: Ajustar la consulta para contar los partidos por torneo
+
+Necesitamos hacer un join entre las tablas torneos, equipos y partidos para contar los partidos correctamente. A continuación te
+muestro cómo hacerlo en el controlador:
+
+namespace App\Http\Controllers\Chart;
+
+use App\Http\Controllers\Controller;
+use App\Models\JugadorPartido;
+use App\Models\Partido;
+use App\Models\Torneo;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+
+class GraficoController extends Controller
+{
+public function cards()
+{
+// Obtener partidos por mes
+$partidosPorMes = Partido::selectRaw('YEAR(fecha) as year, MONTH(fecha) as month, COUNT(*) as cantidad')
+->groupBy('year', 'month')
+->orderBy('year', 'asc')
+->orderBy('month', 'asc')
+->get();
+
+// Datos adicionales (asistencias, goles, tarjetas)
+$detallePartidos = (object)[
+'asistencia' => JugadorPartido::where('asistencias', '>', 0)->sum('asistencias'),
+'goles' => JugadorPartido::where('goles', '>', 0)->sum('goles'),
+'amarillas' => JugadorPartido::where('tarjeta_id', '1')->count(),
+'rojas' => JugadorPartido::where('tarjeta_id', '2')->count(),
+];
+
+// Obtener partidos por torneo utilizando join
+$torneos = Torneo::select('torneos.id', 'torneos.nombre', DB::raw('COUNT(partidos.id) as partidos_count'))
+->join('equipos', 'equipos.torneo_id', '=', 'torneos.id')
+->join('equipo_partido', 'equipo_partido.equipo_id', '=', 'equipos.id')
+->join('partidos', 'partidos.id', '=', 'equipo_partido.partido_id')
+->groupBy('torneos.id', 'torneos.nombre')
+->get();
+
+// Preparar los datos para los gráficos
+$labels = $torneos->pluck('nombre'); // Nombres de los torneos
+$data = $torneos->pluck('partidos_count'); // Cantidad de partidos
+
+// Retornar la vista con los datos
+return view('admin.dashboard', compact('detallePartidos', 'partidosPorMes', 'labels', 'data'));
+}
+}
+
+Explicación de la consulta:
+
+torneos: Seleccionamos la tabla torneos para obtener la información de los torneos.
+equipos: Unimos la tabla equipos a través del campo torneo_id, que vincula los equipos a los torneos.
+equipo_partido: Unimos la tabla intermedia equipo_partido para conectar los equipos con los partidos.
+partidos: Finalmente, unimos la tabla partidos a través del campo partido_id de la tabla intermedia.
+groupBy: Agrupamos por el id y nombre del torneo para contar los partidos relacionados.
+
+Esta consulta va a contar correctamente la cantidad de partidos por torneo, utilizando las relaciones intermedias entre los
+equipos y los partidos.
+Paso 2: Asegurarse de que las tablas están correctamente relacionadas
+
+La consulta anterior asume que tienes las siguientes relaciones en tus tablas:
+
+torneos → equipos (relación de uno a muchos a través de torneo_id).
+equipos → partidos (relación de muchos a muchos a través de la tabla intermedia equipo_partido).
+
+Si las relaciones están correctamente configuradas, esta consulta debería funcionar bien.
+Resultado:
+
+Esta consulta debería corregir el error de columna no encontrada y devolver los resultados esperados, permitiéndote generar los gráficos
+correctamente con los partidos por torneo.
+
+Prueba esto y me avisas si tienes algún problema adicional.
+FIN.
+
+//Tú dijiste:
+me cuenta los partidos dobles
+FIN.
+
+ChatGPT:
+El problema de los partidos contados de manera duplicada suele ocurrir porque un mismo partido puede estar relacionado con varios
+equipos, y si no gestionamos correctamente las uniones (join), los resultados pueden duplicarse. Esto puede suceder cuando las relaciones
+intermedias (equipo_partido) están involucradas, ya que cada equipo en el partido tendrá su propia fila en la tabla intermedia, lo que
+genera duplicados al hacer un JOIN con partidos.
+
+Para evitar estos duplicados, podemos usar la función DISTINCT en nuestra consulta para asegurarnos de contar cada partido solo una
+vez por torneo. Vamos a modificar la consulta para contar correctamente los partidos, asegurándonos de eliminar los duplicados.
+Solución: Usar DISTINCT en la consulta
+
+Debemos hacer que la consulta de partidos sea única (sin duplicados). Esto se puede hacer utilizando DISTINCT sobre los IDs de los partidos,
+ya que estamos interesados en contar los partidos únicos.
+
+Aquí te muestro cómo modificar la consulta para contar los partidos de manera única por torneo:
+Código actualizado del controlador:
+
+namespace App\Http\Controllers\Chart;
+
+use App\Http\Controllers\Controller;
+use App\Models\JugadorPartido;
+use App\Models\Partido;
+use App\Models\Torneo;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+
+class GraficoController extends Controller
+{
+public function cards()
+{
+// Obtener partidos por mes
+$partidosPorMes = Partido::selectRaw('YEAR(fecha) as year, MONTH(fecha) as month, COUNT(*) as cantidad')
+->groupBy('year', 'month')
+->orderBy('year', 'asc')
+->orderBy('month', 'asc')
+->get();
+
+// Datos adicionales (asistencias, goles, tarjetas)
+$detallePartidos = (object)[
+'asistencia' => JugadorPartido::where('asistencias', '>', 0)->sum('asistencias'),
+'goles' => JugadorPartido::where('goles', '>', 0)->sum('goles'),
+'amarillas' => JugadorPartido::where('tarjeta_id', '1')->count(),
+'rojas' => JugadorPartido::where('tarjeta_id', '2')->count(),
+];
+
+// Obtener partidos por torneo utilizando join con DISTINCT
+$torneos = Torneo::select('torneos.id', 'torneos.nombre', DB::raw('COUNT(DISTINCT partidos.id) as partidos_count'))
+->join('equipos', 'equipos.torneo_id', '=', 'torneos.id')
+->join('equipo_partido', 'equipo_partido.equipo_id', '=', 'equipos.id')
+->join('partidos', 'partidos.id', '=', 'equipo_partido.partido_id')
+->groupBy('torneos.id', 'torneos.nombre')
+->get();
+
+// Preparar los datos para los gráficos
+$labels = $torneos->pluck('nombre'); // Nombres de los torneos
+$data = $torneos->pluck('partidos_count'); // Cantidad de partidos
+
+// Retornar la vista con los datos
+return view('admin.dashboard', compact('detallePartidos', 'partidosPorMes', 'labels', 'data'));
+}
+}
+
+Explicación de los cambios:
+COUNT(DISTINCT partidos.id): Usamos DISTINCT para asegurarnos de que cada partido sea contado solo una vez, incluso si está asociado a varios
+equipos. Al contar de esta manera, cada partido único se cuenta una sola vez, independientemente de cuántos equipos participen en él.
+
+¿Por qué usar DISTINCT?
+
+Cuando usamos JOIN con tablas como equipos y equipo_partido, un solo partido puede aparecer múltiples veces en los resultados si hay varios
+equipos asociados con él. Esto puede generar duplicados en el conteo de los partidos. Al usar COUNT(DISTINCT partidos.id), nos aseguramos
+de que cada partido se cuente solo una vez, sin importar cuántos equipos estén involucrados.
+Resultado:
+
+Ahora la consulta debe contar correctamente los partidos únicos por torneo, sin duplicados, y podrás visualizar la cantidad correcta de
+partidos en tu gráfico.
+
+Prueba esta solución y me avisas si el problema persiste o si necesitas más ayuda.
+FIN.
+
+//Tú dijiste:
+no esta mostrando los datos en la grafica en la grafica
+FIN.
+
+ChatGPT
+Entiendo que la consulta ahora está correcta para obtener los partidos por torneo, pero los datos no se están mostrando en el gráfico.
+Vamos a asegurarnos de que los datos se están pasando correctamente a la vista y se están utilizando adecuadamente en el código JavaScript
+que genera los gráficos.
+
+Te guiaré paso a paso para asegurarnos de que todo esté configurado correctamente.
+Paso 1: Verificar la consulta y los datos que se pasan a la vista
+
+Primero, asegúrate de que el controlador esté pasando los datos correctamente a la vista. Aquí tenemos la variable $labels con los nombres
+de los torneos y $data con la cantidad de partidos. En tu controlador, ya tienes esto:
+
+$labels = $torneos->pluck('nombre'); // Nombres de los torneos
+$data = $torneos->pluck('partidos_count'); // Cantidad de partidos
+
+Asegúrate de que estos datos se están pasando correctamente a la vista. El controlador debe estar retornando la vista con los datos correctamente:
+
+return view('admin.dashboard', compact('detallePartidos', 'partidosPorMes', 'labels', 'data'));
+
+Paso 2: Verificar cómo se usan los datos en JavaScript
+
+En la vista, debes asegurarte de que los datos ($labels y $data) se están utilizando adecuadamente en el gráfico. Aquí es donde tenemos que
+asegurarnos de que los datos se inyectan correctamente en el JavaScript.
+
+Tu código actual para los gráficos es el siguiente:
+
+<script>
+	// Obtener los datos de PHP a JavaScript
+	const partidosPorMes = @json($partidosPorMes);
+	console.log(partidosPorMes);
+
+	// Preparar los datos para el gráfico
+	const meses = partidosPorMes.map(partido => {
+		const date = new Date(partido.year, partido.month - 1);
+		return date.toLocaleString('default', {
+			month: 'long',
+			year: 'numeric'
+		});
+	});
+
+	const cantidadPartidos = partidosPorMes.map(partido => partido.cantidad);
+
+	// Crear el gráfico
+	const ctx = document.getElementById('partidosChart').getContext('2d');
+	const partidosChart = new Chart(ctx, {
+		type: 'line', // Tipo de gráfico: 'line' para gráfico de líneas
+		data: {
+			labels: meses, // Eje X: Meses
+			datasets: [{
+				label: 'Cantidad de Partidos',
+				data: cantidadPartidos, // Eje Y: Cantidad de partidos
+				borderColor: 'rgb(75, 192, 192)',
+				backgroundColor: 'rgba(75, 192, 192, 0.2)',
+				fill: true, // Para un gráfico con área de relleno
+				tension: 0.4 // Curvatura de la línea
+			}]
+		},
+		options: {
+			responsive: true,
+			scales: {
+				y: {
+					beginAtZero: true, // Asegura que el eje Y comienza en 0
+				}
+			}
+		}
+	});
+</script>
+
+<script>
+	var ctx = document.getElementById('myBarChart').getContext('2d');
+	var myChart = new Chart(ctx, {
+		type: 'bar', // Tipo de gráfico, puede ser 'bar', 'line', 'pie', etc.
+		data: {
+			labels: @json($labels), // Los nombres de los torneos
+			datasets: [{
+				label: 'Cantidad de Partidos',
+				data: @json($data), // Cantidad de partidos por torneo
+				backgroundColor: 'rgba(75, 192, 192, 0.2)',
+				borderColor: 'rgba(75, 192, 192, 1)',
+				borderWidth: 1
+			}]
+		},
+		options: {
+			responsive: true,
+			scales: {
+				y: {
+					beginAtZero: true, // Asegura que el eje Y comienza en 0
+				}
+			}
+		}
+	});
+</script>
+
+Paso 3: Revisar el formato de los datos
+
+Verifica que las variables @json($labels) y @json($data) se estén convirtiendo correctamente en formato JavaScript. Si $labels y $data son
+colecciones de Laravel, @json debería convertirlos correctamente.
+Ejemplo:
+
+Si @json($labels) es algo como:
+
+["Torneo A", "Torneo B", "Torneo C"]
+
+Y @json($data) es algo como:
+
+[10, 15, 20]
+
+Entonces, los gráficos deben mostrar esos valores correctamente.
+Paso 4: Verificar que el HTML y Canvas están bien configurados
+
+Asegúrate de que los elementos <canvas> en tu HTML tengan los IDs correctos y sean accesibles para el código JavaScript.
+
+	<canvas id="partidosChart" width="100%" height="40"></canvas>
+	<canvas id="myBarChart" width="100%" height="40"></canvas>
+
+	Paso 5: Inspeccionar el navegador para posibles errores
+
+	Si los datos no se están mostrando, abre la consola de desarrollo de tu navegador (presiona F12 o Ctrl + Shift + I) y ve a la pestaña
+	de "Consola" (Console). Verifica si hay algún error en JavaScript o si los datos no se están inyectando correctamente.
+
+	Asegúrate de que las variables labels y data estén disponibles en JavaScript y que contengan los datos esperados.
+	Resumen:
+
+	Verificar que los datos son pasados correctamente desde el controlador a la vista.
+	Asegurar que los datos están siendo inyectados correctamente en el JavaScript con @json.
+	Verificar que el HTML y los elementos <canvas> están configurados correctamente.
+		Revisar la consola del navegador para ver si hay errores de JavaScript.
+
+		Prueba estas sugerencias y, si el problema persiste, revisa los datos en la consola del navegador para asegurarte de que se están pasando
+		correctamente. Si ves algún error, compártelo y podré ayudarte a solucionarlo.
+		FIN.
+
+		//Tú dijiste:
+		no puedo mostrar todos los gráficos en la misma vista
+		FIN.
+
+		ChatGPT
+		Si no puedes mostrar todos los gráficos en la misma vista, hay varias posibles razones que pueden estar causando el problema. Aquí te
+		proporcionaré algunos pasos y soluciones que podrías intentar para resolver el problema y asegurarte de que todos los gráficos se muestren
+		correctamente en la misma página.
+		1. Verificar que los IDs de los Canvas son únicos
+
+		Cada gráfico debe tener un id único para que puedas referenciarlos correctamente en el código JavaScript. En tu caso, tienes dos gráficos:
+
+		El gráfico de la cantidad de partidos por mes.
+		El gráfico de la cantidad de partidos por torneo.
+
+		Asegúrate de que los elementos <canvas> tengan un id único y correcto en tu vista Blade:
+
+			<div class="row">
+				<div class="col-xl-6">
+					<div class="card mb-4">
+						<div class="card-header">
+							<i class="fas fa-chart-area me-1"></i>
+							Area Chart Example
+						</div>
+						<div class="card-body">
+							<canvas id="partidosChart" width="100%" height="40"></canvas>
+						</div>
+					</div>
+				</div>
+				<div class="col-xl-6">
+					<div class="card mb-4">
+						<div class="card-header">
+							<i class="fas fa-chart-bar me-1"></i>
+							Bar Chart Example
+						</div>
+						<div class="card-body">
+							<canvas id="myBarChart" width="100%" height="40"></canvas>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			Verifica que los IDs de los canvas sean correctos, en este caso partidosChart y myBarChart.
+			2. Asegúrate de que el código JavaScript está correcto
+
+			Cada gráfico tiene su propio bloque de código JavaScript para inicializarlo. Asegúrate de que el código JavaScript para cada gráfico se esté
+			ejecutando correctamente.
+
+			Por ejemplo, para el gráfico de líneas (de partidos por mes):
+
+			<script>
+				const partidosPorMes = @json($partidosPorMes);
+				const meses = partidosPorMes.map(partido => {
+					const date = new Date(partido.year, partido.month - 1);
+					return date.toLocaleString('default', {
+						month: 'long',
+						year: 'numeric'
+					});
+				});
+
+				const cantidadPartidos = partidosPorMes.map(partido => partido.cantidad);
+
+				const ctx = document.getElementById('partidosChart').getContext('2d');
+				const partidosChart = new Chart(ctx, {
+					type: 'line',
+					data: {
+						labels: meses,
+						datasets: [{
+							label: 'Cantidad de Partidos',
+							data: cantidadPartidos,
+							borderColor: 'rgb(75, 192, 192)',
+							backgroundColor: 'rgba(75, 192, 192, 0.2)',
+							fill: true,
+							tension: 0.4
+						}]
+					},
+					options: {
+						responsive: true,
+						scales: {
+							y: {
+								beginAtZero: true
+							}
+						}
+					}
+				});
+			</script>
+
+			Y para el gráfico de barras (de partidos por torneo):
+
+			<script>
+				var ctx = document.getElementById('myBarChart').getContext('2d');
+				var myChart = new Chart(ctx, {
+					type: 'bar',
+					data: {
+						labels: @json($labels), // Los nombres de los torneos
+						datasets: [{
+							label: 'Cantidad de Partidos',
+							data: @json($data), // Cantidad de partidos por torneo
+							backgroundColor: 'rgba(75, 192, 192, 0.2)',
+							borderColor: 'rgba(75, 192, 192, 1)',
+							borderWidth: 1
+						}]
+					},
+					options: {
+						responsive: true,
+						scales: {
+							y: {
+								beginAtZero: true
+							}
+						}
+					}
+				});
+			</script>
+
+			3. Comprobar que se están cargando los scripts correctamente
+
+			Asegúrate de que los scripts de Chart.js y cualquier otro script que utilices se están cargando correctamente. Si estás usando un CDN para
+			Chart.js, revisa que no haya problemas con la carga.
+
+			Incluye el CDN de Chart.js en la parte superior de tu sección @section('js') o en el archivo layouts.app:
+
+			<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+			4. Problema de carga asíncrona o de orden en los scripts
+
+			Si tus gráficos no se están mostrando, puede ser que los scripts se estén ejecutando antes de que el DOM esté completamente cargado. Esto puede
+			ser resuelto de la siguiente manera:
+			Usar window.onload para esperar a que la página cargue completamente:
+
+			<script>
+				window.onload = function() {
+					// Código para el gráfico de partidos por mes
+					const partidosPorMes = @json($partidosPorMes);
+					const meses = partidosPorMes.map(partido => {
+						const date = new Date(partido.year, partido.month - 1);
+						return date.toLocaleString('default', {
+							month: 'long',
+							year: 'numeric'
+						});
+					});
+
+					const cantidadPartidos = partidosPorMes.map(partido => partido.cantidad);
+
+					const ctx = document.getElementById('partidosChart').getContext('2d');
+					const partidosChart = new Chart(ctx, {
+						type: 'line',
+						data: {
+							labels: meses,
+							datasets: [{
+								label: 'Cantidad de Partidos',
+								data: cantidadPartidos,
+								borderColor: 'rgb(75, 192, 192)',
+								backgroundColor: 'rgba(75, 192, 192, 0.2)',
+								fill: true,
+								tension: 0.4
+							}]
+						},
+						options: {
+							responsive: true,
+							scales: {
+								y: {
+									beginAtZero: true
+								}
+							}
+						}
+					});
+
+					// Código para el gráfico de partidos por torneo
+					var ctx = document.getElementById('myBarChart').getContext('2d');
+					var myChart = new Chart(ctx, {
+						type: 'bar',
+						data: {
+							labels: @json($labels),
+							datasets: [{
+								label: 'Cantidad de Partidos',
+								data: @json($data),
+								backgroundColor: 'rgba(75, 192, 192, 0.2)',
+								borderColor: 'rgba(75, 192, 192, 1)',
+								borderWidth: 1
+							}]
+						},
+						options: {
+							responsive: true,
+							scales: {
+								y: {
+									beginAtZero: true
+								}
+							}
+						}
+					});
+				};
+			</script>
+
+			Este código asegura que los gráficos solo se generen después de que la página y todos los elementos (como los <canvas>) estén completamente
+				cargados.
+				5. Revisar posibles errores en la consola
+
+				Abre la consola de desarrollo del navegador (F12 o Ctrl + Shift + I, luego ve a la pestaña "Consola") para ver si hay algún error de JavaScript
+				que esté impidiendo la carga de los gráficos. Si ves un error relacionado con los gráficos o con el acceso a los elementos canvas, podrías
+				compartirlo para encontrar la solución adecuada.
+				Resumen
+
+				Verifica que los IDs de los canvas son únicos.
+				Asegúrate de que los datos se inyecten correctamente en JavaScript usando @json.
+				Carga los scripts de manera adecuada, utilizando window.onload para asegurar que los gráficos se carguen después de que la página esté lista.
+				Revisa la consola de tu navegador para ver si hay errores de JavaScript que puedan estar impidiendo la carga de los gráficos.
+
+				Con estas recomendaciones, deberías poder mostrar todos los gráficos en la misma página correctamente. Si el problema persiste, por favor
+				compártelo y lo resolveremos juntos.

@@ -1,0 +1,29 @@
+📁 deploy-hook.php – Código completo
+Esta en el archibo
+
+🔒 Seguridad
+    Reemplaza 'TU_CLAVE_SECRETA' con una clave segura, como "AKLJHsdjh8123hsd".
+    Asegúrate de que el archivo no esté expuesto públicamente (ponlo en una carpeta difícil de 
+        adivinar o protégelo con .htaccess).
+    Usa HTTPS para llamar al endpoint, nunca HTTP.
+
+📦 Llamada desde GitHub Actions
+En tu workflow de Actions, asegúrate de tener el secreto DEPLOY_KEY configurado con la misma clave 
+que definiste en el archivo.
+
+//CODIGO
+- name: Ejecutar comandos post-deploy en el servidor
+  run: |
+    curl https://tusitio.com/oculta-carpeta/deploy-hook.php?key=${{ secrets.DEPLOY_KEY }}
+
+📁 .htaccess – Protección para deploy-hook.php
+📌 ¿Qué hace?
+    Desactiva el listado de archivos por si alguien intenta ver los archivos de esa carpeta.
+    Bloquea acceso directo al deploy-hook.php si no se le pasa el parámetro ?key=....
+    (Opcional) puedes restringir el acceso aún más por IP.
+
+✅ Ejemplo final de ruta segura
+Imaginemos que:
+    Subes el archivo a: https://tusitio.com/.deploy/deploy-hook.php
+    Tu clave secreta es: super_clave_321
+    Llamarías al script así:

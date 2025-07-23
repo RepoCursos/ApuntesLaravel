@@ -1,0 +1,74 @@
+## Comandos para levantar Laravel desde cero
+
+# Construimos la imagenes y levantamos los contenedores
+docker compose up -d --build
+
+# Detenemos los contenedores
+docker compose down
+
+# Otorgamos permisos a la carpeta src
+sudo chown -R 1000:1000 ./src
+
+# Limpiamos la carpeta src creada en la imagen
+rm -rf ./src/*
+
+# Levantamos de nuevo los contenedores
+docker compose up -d
+
+# Entramos al contenedor de la aplicacion 
+docker exec -it nombre_de_app bash
+
+# Accedemos a la carpeta html 
+@1c1fa8375ec5:/var/www$ cd html
+
+# Ejecutamos dentro del contenedor para instalar un nuevo proyecto 
+@1c1fa8375ec5:/var/www/html$ composer create-project "laravel/laravel:^10.0" temp
+
+# Movemos los arcivos de la carpeta temp a html
+@1c1fa8375ec5:/var/www/html$ mv temp/* temp/.* .
+
+# Eliminamos la carpeta temp
+@1c1fa8375ec5:/var/www/html$ rmdir temp
+
+✅ Verifica en tu navegador
+http://localhost:8000
+
+# Instalar Breeze y compilar assets
+@1c1fa8375ec5:/var/www/html$ composer require laravel/breeze --dev
+@1c1fa8375ec5:/var/www/html$ php artisan breeze:install
+
+# Ver si es necesario "Opcional ya que el propio contenedor levanta estos servicios"
+@1c1fa8375ec5:/var/www/html$ node npm install
+@1c1fa8375ec5:/var/www/html$ node npm run dev
+
+## Nota IMPORTANTE
+### Agregar en vite.config.js (si usas Vite)
+
+import { defineConfig } from 'vite';
+import laravel from 'laravel-vite-plugin';
+
+export default defineConfig({
+    server: {
+        host: '0.0.0.0', // Importante para que sea accesible desde fuera del contenedor
+        port: 5173,      // Puerto que estamos exponiendo en Docker
+        strictPort: true,
+        hmr: {
+            host: 'localhost', // Laravel está accediendo desde localhost
+            protocol: 'ws',
+        },
+    },
+    plugins: [
+        laravel({
+            input: ['resources/css/app.css', 'resources/js/app.js'],
+            refresh: true,
+        }),
+    ],
+});
+
+Y si es un proyecto nuevo, asegúrate de tener en tu package.json
+
+"scripts": {
+    "dev": "vite",
+    "build": "vite build"
+}
+

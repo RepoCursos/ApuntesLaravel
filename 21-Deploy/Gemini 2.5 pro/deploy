@@ -1,0 +1,69 @@
+name: Deploy to InfinityFree
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Set up PHP
+      uses: shivammathur/setup-php@v2
+      with:
+        php-version: '8.2'
+        extensions: mbstring, xml, curl, zip, gd, iconv, pdo, pdo_mysql
+        tools: composer
+
+    - name: Install Composer Dependencies
+      run: composer install --no-dev --prefer-dist --no-scripts --no-progress --optimize-autoloader
+        
+    - name: Generate .env file for production
+      run: |
+        echo "APP_NAME=Laravel" >> .env
+        echo "APP_ENV=production" >> .env
+        echo "APP_KEY=${{ secrets.PROD_APP_KEY }}" >> .env
+        echo "APP_DEBUG=false" >> .env
+        echo "APP_URL=${{ secrets.PROD_APP_URL }}" >> .env
+
+        echo "LOG_CHANNEL=stack" >> .env
+        echo "LOG_DEPRECATIONS_CHANNEL=null" >> .env
+        echo "LOG_LEVEL=error" >> .env
+
+        echo "DB_CONNECTION=mysql" >> .env
+        echo "DB_HOST=${{ secrets.PROD_DB_HOST }}" >> .env
+        echo "DB_PORT=3306" >> .env
+        echo "DB_DATABASE=${{ secrets.PROD_DB_DATABASE }}" >> .env
+        echo "DB_USERNAME=${{ secrets.PROD_DB_USERNAME }}" >> .env
+        echo "DB_PASSWORD=${{ secrets.PROD_DB_PASSWORD }}" >> .env
+        
+        echo "BROADCAST_DRIVER=log" >> .env
+        echo "CACHE_DRIVER=file" >> .env
+        echo "FILESYSTEM_DISK=local" >> .env
+        echo "QUEUE_CONNECTION=sync" >> .env
+        echo "SESSION_DRIVER=file" >> .env
+        echo "SESSION_LIFETIME=120" >> .env
+
+    # Opcional pero recomendado para rendimiento (si no causa problemas)
+    # - name: Cache Laravel configurations
+    #   run: |
+    #     php artisan config:cache
+    #     php artisan route:cache
+    #     php artisan view:cache
+    #     chmod -R 775 bootstrap/cache
+    #     chmod -R 775 public/storage
+
+    - name: Deploy to FTP server
+      uses: SamKirkland/FTP-Deploy-Action@v4.3.4
+      with:
+        server: ${{ secrets.FTP_SERVER }}
+        username: ${{ secrets.FTP_USERNAME }}
+        password: ${{ secrets.FTP_PASSWORD }}
+        protocol: ftp
+        port: 21
+        local-dir: ./
+        server-dir: /htdocs/

@@ -1,0 +1,234 @@
+hola tengo este codigo en mis controladores y me estoy dando cuenta que de cierta forma tengo codigo duplicado en mis controladores, copio codigo:
+```
+class EquipoController extends Controller
+   public function store(EquipoRequest $request): RedirectResponse
+    {
+        $equipo = Equipo::create($request->all());
+
+        if ($request->hasFile('file_uri')) { //Repito Codigo con Jugador
+            $file = $request->file('file_uri'); //Repito Codigo con Jugador
+            $fileName = $equipo->id . "-" . time() . "." . $file->extension(); //Repito Codigo con Jugador salvo por la variable $equipo
+            $destinationPath = public_path('img'); //Repito Codigo con Jugador
+            $file->move($destinationPath, $fileName); //Repito Codigo con Jugador
+
+            $equipo->file_uri = $fileName;
+            $equipo->save();
+        }
+
+        return redirect()->route('admin.equipo.index')->with('success', __('view.datos_creado'));
+    }
+    
+    public function update(EquipoRequest $request, Equipo $equipo): RedirectResponse
+    {
+        if ($request->hasFile('file_uri')) { //Repito Codigo con Jugador
+            $oldImagePath = public_path('img/' . $equipo->file_uri); //Repito Codigo con Jugador salvo por la variable $equipo
+            if (file_exists($oldImagePath)) { //Repito Codigo con Jugador
+                unlink($oldImagePath); //Repito Codigo con Jugador
+            }
+
+            $file = $request->file('file_uri'); //Repito Codigo con Jugador
+            $fileName = $equipo->id . "-" . time() . "." . $file->extension(); //Repito Codigo con Jugador salvo por la variable $equipo
+            $file->move(public_path('img'), $fileName); //Repito Codigo con Jugador
+
+            $equipo->file_uri = $fileName;
+            $equipo->save();
+        }
+
+        $equipo->update($request->input());
+        return redirect()->route('admin.equipo.index')->with('success', __('view.datos_actualizado'));
+    }
+
+    public function destroy(Equipo $equipo)
+    {
+        $imagePath = public_path('img/' . $equipo->file_uri); //Repito Codigo con Jugador salvo por la variable $equipo
+        if (file_exists($imagePath)) { //Repito Codigo con Jugador
+            unlink($imagePath); //Repito Codigo con Jugador
+        }
+        
+        $equipo->delete();
+        return redirect()->route('admin.equipo.index')->with('danger', __('view.datos_eliminado'));
+    }
+```
+```
+class JugadorController extends Controller
+    public function store(JugadorRequest $request): RedirectResponse
+    {
+        $jugador = Jugador::create($request->all());
+
+        if ($request->hasFile('file_uri')) { //Repito Codigo con Equipo
+            $file = $request->file('file_uri'); //Repito Codigo con Equipo
+            $fileName = $jugador->id . "-" . time() . "." . $file->extension(); //Repito Codigo con Equipo salvo la variable $jugador
+            $destinationPath = public_path('img'); //Repito Codigo con Equipo
+            $file->move($destinationPath, $fileName); //Repito Codigo con Equipo
+
+            $jugador->file_uri = $fileName;
+            $jugador->save();
+        }
+        return redirect()->route('admin.jugador.index')->with('success', __('view.datos_creado'));
+    }
+    
+        public function update(JugadorRequest $request, Jugador $jugador): RedirectResponse
+    {
+        if ($request->hasFile('file_uri')) { //Repito Codigo con Equipo
+            $oldImagePath = public_path('img/' . $jugador->file_uri); //Repito Codigo con Equipo
+            if (file_exists($oldImagePath)) { //Repito Codigo con Equipo
+                unlink($oldImagePath); //Repito Codigo con Equipo
+            }
+
+            $file = $request->file('file_uri'); //Repito Codigo con Equipo
+            $fileName = $jugador->id . "-" . time() . "." . $file->extension(); //Repito Codigo con Equipo salvo la variable $jugador
+            $file->move(public_path('img'), $fileName); //Repito Codigo con Equipo
+
+            $jugador->file_uri = $fileName;
+            $jugador->save();
+        }
+
+        $jugador->update($request->input());
+        return redirect()->route('admin.jugador.index')->with('success', __('view.datos_actualizado'));
+    }
+    
+        public function destroy(Jugador $jugador)
+    {
+        $imagePath = public_path('img/' . $jugador->file_uri); //Repito Codigo con Equipo salvo la variable $jugador
+        if (file_exists($imagePath)) { //Repito Codigo con Equipo
+            unlink($imagePath); //Repito Codigo con Equipo
+        }
+        
+        $jugador->delete();
+        $jugador->partidos()->detach();
+        return redirect()->route('admin.jugador.index')->with('danger', __('view.datos_eliminado'));
+    }
+```
+como puedo refactorisar este codigo para poder usarlo en distintas funciones de distintos controladeres en laravel?
+
+RESPUESTA:
+Perfecto, la capa de servicio es una excelente práctica en Laravel para mantener los controladores delgados y bien organizados. Vamos a refactorizar tu lógica de archivos en una clase service llamada, por ejemplo, FileUploadService.
+
+✅ Paso 1: Crear la clase service
+
+Ubica esta clase en app/Services/FileUploadService.php:
+
+<?php
+
+namespace App\Services;
+
+use Illuminate\Http\Request;
+use Illuminate\Database\Eloquent\Model;
+
+class FileUploadService
+{
+    protected string $defaultPath = 'img';
+    protected string $defaultField = 'file_uri';
+
+    public function upload(Request $request, Model $model, ?string $field = null, ?string $path = null): void
+    {
+        $field = $field ?? $this->defaultField;
+        $path = $path ?? $this->defaultPath;
+
+        if ($request->hasFile($field)) {
+            $file = $request->file($field);
+            $fileName = $model->id . '-' . time() . '.' . $file->extension();
+            $file->move(public_path($path), $fileName);
+
+            $model->{$field} = $fileName;
+            $model->save();
+        }
+    }
+
+    public function update(Request $request, Model $model, ?string $field = null, ?string $path = null): void
+    {
+        $field = $field ?? $this->defaultField;
+        $path = $path ?? $this->defaultPath;
+
+        if ($request->hasFile($field)) {
+            $this->delete($model, $field, $path);
+            $this->upload($request, $model, $field, $path);
+        }
+    }
+
+    public function delete(Model $model, ?string $field = null, ?string $path = null): void
+    {
+        $field = $field ?? $this->defaultField;
+        $path = $path ?? $this->defaultPath;
+
+        $filePath = public_path($path . '/' . $model->{$field});
+        if (file_exists($filePath)) {
+            unlink($filePath);
+        }
+    }
+}
+
+✅ Paso 2: Inyectar y usar el Service en tus Controladores
+
+Laravel te permite inyectar servicios automáticamente en los controladores. Vamos a modificar EquipoController y JugadorController.
+🔧 EquipoController.php
+
+use App\Services\FileUploadService;
+
+class EquipoController extends Controller
+{
+    public function __construct(protected FileUploadService $fileUploadService) {}
+
+    public function store(EquipoRequest $request): RedirectResponse
+    {
+        $equipo = Equipo::create($request->all());
+        $this->fileUploadService->upload($request, $equipo);
+        return redirect()->route('admin.equipo.index')->with('success', __('view.datos_creado'));
+    }
+
+    public function update(EquipoRequest $request, Equipo $equipo): RedirectResponse
+    {
+        $this->fileUploadService->update($request, $equipo);
+        $equipo->update($request->input());
+        return redirect()->route('admin.equipo.index')->with('success', __('view.datos_actualizado'));
+    }
+
+    public function destroy(Equipo $equipo)
+    {
+        $this->fileUploadService->delete($equipo);
+        $equipo->delete();
+        return redirect()->route('admin.equipo.index')->with('danger', __('view.datos_eliminado'));
+    }
+}
+
+🔧 JugadorController.php
+
+use App\Services\FileUploadService;
+
+class JugadorController extends Controller
+{
+    public function __construct(protected FileUploadService $fileUploadService) {}
+
+    public function store(JugadorRequest $request): RedirectResponse
+    {
+        $jugador = Jugador::create($request->all());
+        $this->fileUploadService->upload($request, $jugador);
+        return redirect()->route('admin.jugador.index')->with('success', __('view.datos_creado'));
+    }
+
+    public function update(JugadorRequest $request, Jugador $jugador): RedirectResponse
+    {
+        $this->fileUploadService->update($request, $jugador);
+        $jugador->update($request->input());
+        return redirect()->route('admin.jugador.index')->with('success', __('view.datos_actualizado'));
+    }
+
+    public function destroy(Jugador $jugador)
+    {
+        $this->fileUploadService->delete($jugador);
+        $jugador->partidos()->detach();
+        $jugador->delete();
+        return redirect()->route('admin.jugador.index')->with('danger', __('view.datos_eliminado'));
+    }
+}
+
+✅ Ventajas de la clase Service
+
+    Separación de responsabilidades: el controlador se encarga solo de coordinar el flujo, no de manejar lógica.
+
+    Facilita testing: puedes testear FileUploadService de forma aislada.
+
+    Escalabilidad: si más adelante necesitas guardar en S3, redimensionar imágenes o validar formatos, puedes hacerlo dentro del service sin tocar los controladores.
+
+
+

@@ -1,0 +1,16 @@
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # Opcional pero recomendado: Redirigir www a no-www (o viceversa) y http a https
+    # RewriteCond %{HTTP_HOST} ^www\.(.+)$ [NC]
+    # RewriteRule ^ https://%1%{REQUEST_URI} [L,R=301]
+    # RewriteCond %{HTTPS} off
+    # RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+    # Si la petición NO es para un archivo existente
+    RewriteCond %{REQUEST_FILENAME} !-f
+    # Y si la petición NO es para un directorio existente
+    RewriteCond %{REQUEST_FILENAME} !-d
+    # Entonces, redirige la petición a index.php
+    RewriteRule ^ index.php [L]
+</IfModule>
