@@ -7,7 +7,7 @@ use App\Http\Controllers\VideosController;
 use Illuminate\Support\Facades\Route;
 
 //Rutas Callback
-//No se necesita controlador 
+//No se necesita controlador
 Route::get('/', function () {return view('home'); });
 Route::get('/guests/partidos', function() {return view('/guests/partidos'); });
 Route::get('/guests/clasificaciones', function() {return view('/guests/clasificaciones'); });
@@ -19,16 +19,25 @@ las variables del modelo en el controlador tienen que se igual "public function 
 porque asi es como identifica el metodo resource, si no indicamos a la variable igual nos da error, esto se traslada a los contoladores y a
 las vistas.
 */
-Route::resource('videos', VideosController::class)->names('videos');  
+//En este caso la ruta "resource/views/otraCarpeta/videos" por eso indicamos -> 'videos'
+Route::resource('videos', VideosController::class)->names('videos'); 
 
-// Metodos adiciionales al tipoco crud en el controlador.
+//Cuando en nuestro controlador no utilizamos alguno de los metoso la mejor practica es indicar cuales vamos a incluir o excluir para no generar rutas imnecesarias
+//Ejemplo metodo "only => incluye" vamos a utilizar solo los metodos ['index', 'show']
+ Route::resource('videos', VideosController::class)->names('videos')->only(['index', 'show']);
+
+ //Ejemplo metodo "except => excluye" vamos a utilizar todos los metodos menos ['edit', 'create'] EJ:por que utilizaremos un modal para esto
+ Route::resource('videos', VideosController::class)->names('videos')->except(['edit', 'create']);
+
+// Metodos adiciionales al tipoco crud en el controlador. No RECOMENDADO
 /*
 Si queremos implementar metodos adicionales a los tipicos del crud "index, create, store, edit, update, destroy, show", lo podemos realizar
 PERO si las rutas las declaramos usando el metodo resource: "Route::resource('videos', VideosController::class);", tenemos que declarar los
 metodos adicionales antes del resource, para que no nos genere conflicto ya que puede que no lo reconozca. Ej:
+*/
  Route::get('Videos/{video}', [VideosConMiddlewareController::class, 'otroMetodo'])->name('Videos.otroMetodo');
  Route::resource('videos', VideosController::class)->names('videos');
- Nota: mejores practicas es crear los metodos del CRUD en un controlador, utilizar el "Route::resource" y los metodos adicionales 
+/* Nota: mejores practicas es crear los metodos del CRUD en un controlador, utilizar el "Route::resource" y los metodos adicionales 
  crear otro controlador, utilizar "Route::get o post o el que se necesite.
 */
 
@@ -93,7 +102,7 @@ Route::middleware(['auth', 'role:jugador'])
 
 //Probar si funciona en la practica webtd cuando incluyamos roles
 Route::middleware(['auth', 'role:admin'])
-    		->prefix('admin')
+    	->prefix('admin')
         ->name('admin.torneo.')
         ->group(function () {
     Route::get('/', [TorneoController::class, 'index'])->name('index');

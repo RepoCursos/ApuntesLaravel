@@ -1,10 +1,7 @@
 # RUTAS LARAVEL
 https://laravel.com/docs/12.x/routing
 
-¡Excelente! Las rutas son fundamentales en Laravel y un tema muy común en las entrevistas. Aquí te dejo un desglose de lo que necesitas saber, desde lo básico hasta conceptos más avanzados, con un enfoque en lo que un entrevistador podría preguntar.
-
 **A. Fundamentos (Lo Básico Indispensable):**
-
 1.  **¿Qué es una ruta?**
     *   Esencialmente, una ruta define un endpoint (URL) y cómo la aplicación debe responder a las peticiones que llegan a ese endpoint. Mapea una URI y un método HTTP a una acción específica (closure o método de controlador).
 
