@@ -15,15 +15,19 @@ Aquí tienes un desglose de lo que necesitas saber:
         *   Ejemplo: `php artisan make:controller PostController`
     *   **Ubicación:** Se crean por defecto en el directorio `app/Http/Controllers/`.
     *   **Controladores de Recursos (Resource Controllers):**
-        *   Comando: `php artisan make:controller PhotoController --resource`
+        *   Comando para web: `php artisan make:controller PhotoController --resource`
         *   Genera un controlador con métodos predefinidos para operaciones CRUD (Create, Read, Update, Delete): `index`, `create`, `store`, `show`, `edit`, `update`, `destroy`.
-        *   Muy útil para APIs o secciones administrativas.
+        *   Comando para api: `php artisan make:controller API\PhotoController --api`
+        *   Genera un controlador con métodos predefinidos para operaciones CRUD sin respuesta: `index`,  `store`, `show`, `update`, `destroy`.
     *   **Controladores Invocables (Single Action Controllers):**
         *   Comando: `php artisan make:controller ShowUserProfile --invokable`
         *   Genera un controlador con un único método `__invoke()`. Útil para controladores que solo realizan una acción.
         *   Se registran en las rutas sin especificar un método: `Route::get('/user/{id}', ShowUserProfile::class);`
         *   Video:
         *   **--invokable**: https://www.youtube.com/watch?v=2Qj5ry1u3oQ&list=PLX64KYDfSBMvUiS4LJXvNGmDsEEI8_HD1&index=12
+  
+    *   **Controladores de Recursos, Modelos y Respuestas (Resource Controllers con Model y Request):**
+    *   `php artisan make:controller PhotoController --model=Photo --resource --requests`
 
 3.  **Rutas y Controladores:**
     *   **Cómo conectar una ruta a un método de controlador:**

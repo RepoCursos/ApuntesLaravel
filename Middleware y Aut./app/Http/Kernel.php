@@ -65,6 +65,15 @@ class Kernel extends HttpKernel
         'signed' => \App\Http\Middleware\ValidateSignature::class,
         'throttle' => \Illuminate\Routing\Middleware\ThrottleRequests::class,
         'verified' => \Illuminate\Auth\Middleware\EnsureEmailIsVerified::class,
-        'verifica.edad' => \App\Http\Middleware\VerificaEdad::class,
+        //Se deben registrar estos alias para los roles y permisos con spatie
+        'role' => \Spatie\Permission\Middleware\RoleMiddleware::class,
+        'permission' => \Spatie\Permission\Middleware\PermissionMiddleware::class,
+        'role_or_permission' => \Spatie\Permission\Middleware\RoleOrPermissionMiddleware::class,
+        //Middleware personal: Aqui se registran los alias para que lo reconozaca a la 
+        //hora de ser invocado
+        //ejemplo: comprueba si el usuario esta activo o inactivo
+        'active' => \App\Http\Middleware\Admi\CheckUserStatus::class,
+        //ejemplo: verifica la edad del usuario
+        'verifica.edad' => \App\Http\Middleware\Admi\VerificaEdad::class,
     ];
 }

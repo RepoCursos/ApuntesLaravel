@@ -10,6 +10,7 @@ class VideosConMiddlewareController extends Controller
 //Ejemplos comunes
     public function __construct()
     {
+        //MEJORES PRACTICAS: los middleware de autenticacion se aplican a las rutas
         //Middleware comun para verificar la autenticacion
         $this->middleware(['auth', 'verified']);
 
