@@ -15,19 +15,20 @@ Aquí tienes un desglose de lo que necesitas saber:
         *   Ejemplo: `php artisan make:controller PostController`
     *   **Ubicación:** Se crean por defecto en el directorio `app/Http/Controllers/`.
     *   **Controladores de Recursos (Resource Controllers):**
-        *   Comando para web: `php artisan make:controller PhotoController --resource`
+        *   *Comando para web:* `php artisan make:controller PhotoController --resource`
         *   Genera un controlador con métodos predefinidos para operaciones CRUD (Create, Read, Update, Delete): `index`, `create`, `store`, `show`, `edit`, `update`, `destroy`.
-        *   Comando para api: `php artisan make:controller API\PhotoController --api`
+        *   *Comando para api:* `php artisan make:controller API\PhotoController --api`
         *   Genera un controlador con métodos predefinidos para operaciones CRUD sin respuesta: `index`,  `store`, `show`, `update`, `destroy`.
     *   **Controladores Invocables (Single Action Controllers):**
-        *   Comando: `php artisan make:controller ShowUserProfile --invokable`
+        *   *Comando:* `php artisan make:controller ShowUserProfile --invokable`
         *   Genera un controlador con un único método `__invoke()`. Útil para controladores que solo realizan una acción.
         *   Se registran en las rutas sin especificar un método: `Route::get('/user/{id}', ShowUserProfile::class);`
         *   Video:
         *   **--invokable**: https://www.youtube.com/watch?v=2Qj5ry1u3oQ&list=PLX64KYDfSBMvUiS4LJXvNGmDsEEI8_HD1&index=12
   
     *   **Controladores de Recursos, Modelos y Respuestas (Resource Controllers con Model y Request):**
-    *   `php artisan make:controller PhotoController --model=Photo --resource --requests`
+        *   `php artisan make:controller PhotoController --model=Photo --resource --request`
+
 
 3.  **Rutas y Controladores:**
     *   **Cómo conectar una ruta a un método de controlador:**
@@ -47,12 +48,12 @@ Aquí tienes un desglose de lo que necesitas saber:
     *   **Parámetros de Ruta:** Cómo se pasan los parámetros de la URL a los métodos del controlador.
         ```php
         //Ruta: 
-        Route::get('/post/{id}', [PostController::class, 'show']);
+        Route::get('/posts/{post}', [PostController::class, 'show']);
         // Controlador:
-        public function show($id) {
-            // $id contiene el valor del segmento {id} de la URL
-            $post = Post::findOrFail($id);
-            return view('posts.show', ['post' => $post]);
+        public function show($post) {
+            // $post contiene el valor del segmento {id} de la URL
+            $posts = Post::findOrFail($post);
+            return view('posts.show', ['post' => $posts]);
         }
         ```
 
@@ -61,7 +62,8 @@ Aquí tienes un desglose de lo que necesitas saber:
         ```php
         use Illuminate\Http\Request;
 
-        public function store(Request $request) {
+        public function store(Request $request) 
+        {
             // Acceder a los datos de la solicitud
             $name = $request->input('name');
             $email = $request->email; // Acceso como propiedad dinámica
@@ -70,14 +72,26 @@ Aquí tienes un desglose de lo que necesitas saber:
             // ...
         }
         ```
-    *   **Métodos comunes de `Request`:** `input()`, `get()`, `all()`, `has()`, `filled()`, `file()`, `validate()`, `user()` (para obtener el usuario autenticado), `method()`, `isMethod()`, `url()`, `path()`, `ip()`, etc.
+    *   **Métodos comunes de `Request`:** `input()`, `get()`, `all()`, `has()`, `filled()`, `file()`, `validate()`, `user()` 
+    *   (para obtener el usuario autenticado), `method()`, `isMethod()`, `url()`, `path()`, `ip()`, etc.
     *   **Validación:**
-        *   Directamente en el controlador: `$request->validate([...])`.
-        *   Usando **Form Requests** (mejor práctica para validación compleja):
-            *   `php artisan make:request StorePostRequest`
+        *   Directamente en el controlador: `$request->validate([...])`. NO RECOMENDADO
+        *   BUENAS PRACTICAS **Form Requests** (mejor práctica para validación compleja):
+            *   `php artisan make:request PostRequest`
             *   Se definen las reglas en el método `rules()` y opcionalmente `authorize()` del Form Request.
-            *   Se inyecta en el método del controlador: `public function store(StorePostRequest $request)`
+            *   Se inyecta en el método del controlador: `public function store(PostRequest $request)`
             *   Si la validación falla, Laravel automáticamente redirige al usuario o devuelve una respuesta JSON con errores.
+            *   Ejemplo controlador con **Form Request**
+        ```php
+            use App\Http\Requests\VideoRequest; //Ver codficacion en esta ruta.
+            use Illuminate\Http\RedirectResponse;
+
+             public function store(VideoRequest $request): RedirectResponse
+            {
+                Video::create($request->all());
+                return redirect()->route('admin.video.index')->with('success', 'video creado');
+            }
+        ```
 
 5.  **Devolución de Respuestas:**
     *   **Vistas:** `return view('nombre.vista', ['data' => $data]);`
@@ -97,29 +111,113 @@ Aquí tienes un desglose de lo que necesitas saber:
         *   **Dónde va la lógica de negocio:** En Clases de Servicio (Services), Acciones (Actions), Modelos (si es lógica directamente relacionada con el modelo), o Repositorios (para abstracción de datos).
         *   El controlador se enfoca en:
             1.  Recibir la solicitud.
-            2.  Validar la entrada (a menudo delegando a Form Requests).
+            2.  Validar la entrada (a menudo delegando a **Form Requests**).
             3.  Llamar a servicios/modelos para realizar la acción.
             4.  Preparar y devolver la respuesta.
-    *   **Inyección de Dependencias:** Usa la inyección de dependencias para cualquier servicio o clase que necesite tu controlador, no solo `Request`. Esto facilita las pruebas y la flexibilidad.
+    *   **Inyección de Dependencias:** Usa la inyección de dependencias para cualquier `Service` o clase que necesite tu controlador, no solo `Request`. Esto facilita las pruebas y la flexibilidad.
+    *   Hay dos tipos, sin parametros y con parametros.
+    *   Mostraremos dos ejemplos de como se llaman en el Controlador.
+    *   1- Sin parametro: Llamaremos al servicio para generar un numero aleatorio para nuestros hash
         ```php
-        use App\Services\UserService;
 
-        public class UserController extends Controller
+        namespace App\Http\Controllers;
+
+        use App\Http\Services\EncriptacionService; //Ver el codigo del servicio en esta ruta
+
+        class VideosController extends Controller
         {
-            protected $userService;
+            //Para utilizar Servicios
+            private EncriptacionService $encriptacionService; //Ver el codigo del servicio en
 
-            public function __construct(UserService $userService)
+            // Inyeccion de dependecias, se utiliza Service Container esto lo veremos mas adelante
+            public function __construct(EncriptacionService $encriptacionService) 
             {
-                $this->userService = $userService;
+                //Utilizando inyeccion de dependencia, gracias a que utilizamos esta forma inyectar dependencias, sabemos que la podemos utilizar en todo el controlador 
+                $this->encriptacionService = $encriptacionService;
             }
 
-            public function store(Request $request)
+            public function otraAccion()
             {
-                $user = $this->userService->create($request->validated());
-                return redirect()->route('users.show', $user);
+                $cadenaRamdom = $this->encriptacionService->generarCadenaAleatoria();
+                return "HASH: {$cadenaRamdom}";
+            }
+
+            public function hash()
+            {
+                //Demostracion de que la inyeccion de dependencia esta disponible en todo el Controlador
+                $cadenaRamdom = $this->encriptacionService->generarCadenaAleatoria();
+                return "Otro HASH: {$cadenaRamdom}";
             }
         }
         ```
+    *   2- Con parametro: Llamaremos al servicio para guardar las fotos, tanto de los usuarios como de los equipos. 
+    *      El codigo es el mismo pero necesitamos los parametros para indicarles cuando es de usuario y cuando de equipo
+    *      Laravel te permite inyectar servicios automáticamente en los controladores.
+        
+        ✅ Inyectar y usar el Service en tus Controladores
+        
+     *   **🔧 EquipoController.php**
+        ```php
+            use App\Services\FileUploadService;
+
+            class EquipoController extends Controller
+            {
+                public function __construct(protected FileUploadService $fileUploadService) {}
+
+                public function store(EquipoRequest $request): RedirectResponse
+                {
+                    $equipo = Equipo::create($request->all());
+                    $this->fileUploadService->upload($request, $equipo);
+                    return redirect()->route('admin.equipo.index')->with('success', __('view.datos_creado'));
+                }
+
+                public function update(EquipoRequest $request, Equipo $equipo): RedirectResponse
+                {
+                    $this->fileUploadService->update($request, $equipo);
+                    $equipo->update($request->input());
+                    return redirect()->route('admin.equipo.index')->with('success', __('view.datos_actualizado'));
+                }
+
+                public function destroy(Equipo $equipo)
+                {
+                    $this->fileUploadService->delete($equipo);
+                    $equipo->delete();
+                    return redirect()->route('admin.equipo.index')->with('danger', __('view.datos_eliminado'));
+                }
+            }
+        ```
+     *   **🔧 JugadorController.php**
+        ```php
+            use App\Services\FileUploadService;
+
+            class JugadorController extends Controller
+            {
+                public function __construct(protected FileUploadService $fileUploadService) {}
+
+                public function store(JugadorRequest $request): RedirectResponse
+                {
+                    $jugador = Jugador::create($request->all());
+                    $this->fileUploadService->upload($request, $jugador);
+                    return redirect()->route('admin.jugador.index')->with('success', __('view.datos_creado'));
+                }
+
+                public function update(JugadorRequest $request, Jugador $jugador): RedirectResponse
+                {
+                    $this->fileUploadService->update($request, $jugador);
+                    $jugador->update($request->input());
+                    return redirect()->route('admin.jugador.index')->with('success', __('view.datos_actualizado'));
+                }
+
+                public function destroy(Jugador $jugador)
+                {
+                    $this->fileUploadService->delete($jugador);
+                    $jugador->partidos()->detach();
+                    $jugador->delete();
+                    return redirect()->route('admin.jugador.index')->with('danger', __('view.datos_eliminado'));
+                }
+            }
+        ```
+
     *   **Nomenclatura:** Sigue las convenciones de Laravel (`NombreController`, métodos descriptivos como `index`, `show`, `store`, etc.).
     *   **Evita la lógica de consulta directa a la base de datos:** Intenta que el modelo o un repositorio se encargue de esto.
 
