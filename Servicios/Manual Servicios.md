@@ -13,7 +13,18 @@
 10. [Preguntas Típicas de Entrevista](#preguntas-típicas-de-entrevista)
 
 ---
+### Comandos Artisan Útiles:
+```bash
+# Crear Service (personalizado)
+php artisan make:service UserService
 
+# Crear test
+php artisan make:test UserServiceTest --unit
+
+# Limpiar caché de services
+php artisan config:clear
+php artisan route:clear
+```
 ## ¿Qué son los Services?
 
 Los **Services** en Laravel son clases PHP que encapsulan la lógica de negocio de la aplicación. No son una característica específica del framework, sino un patrón de diseño arquitectónico que ayuda a mantener el código organizado y siguiendo los principios SOLID.
@@ -818,19 +829,6 @@ class UserService
 - **Laravel Telescope**: Para monitoring
 - **PHPStan/Psalm**: Para análisis estático
 - **Laravel IDE Helper**: Para mejor autocompletado
-
-### Comandos Artisan Útiles:
-```bash
-# Crear Service (personalizado)
-php artisan make:service UserService
-
-# Crear test
-php artisan make:test UserServiceTest --unit
-
-# Limpiar caché de services
-php artisan config:clear
-php artisan route:clear
-```
 
 ---
 

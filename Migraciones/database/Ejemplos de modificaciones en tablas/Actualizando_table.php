@@ -50,7 +50,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('tabla', function (Blueprint $table) {
-        		$table->string('campo0', 50)->first(); //Crea la columna campo en la primer posicion de la tabla
+        	$table->string('campo0', 50)->first(); //Crea la columna campo en la primer posicion de la tabla
             $table->string('campo1', 50)->after('created_at'); //Crea la columna campo1 una posicion antes de created_at
             $table->integer('campo2')->autoIncrement(); //Crea la columna campo2 de tipo entero y autoincrementable 
         });

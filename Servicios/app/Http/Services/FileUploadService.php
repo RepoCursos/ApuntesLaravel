@@ -10,7 +10,7 @@ class FileUploadService
     protected string $defaultPath = 'img';
     protected string $defaultField = 'file_uri';
 
-    public function upload(Request $request, Model $model, ?string $field = null, ?string $path = null): void
+    public function guardar(Request $request, Model $model, ?string $field = null, ?string $path = null): void
     {
         $field = $field ?? $this->defaultField;
         $path = $path ?? $this->defaultPath;
@@ -25,7 +25,7 @@ class FileUploadService
         }
     }
 
-    public function update(Request $request, Model $model, ?string $field = null, ?string $path = null): void
+    public function actualizar(Request $request, Model $model, ?string $field = null, ?string $path = null): void
     {
         $field = $field ?? $this->defaultField;
         $path = $path ?? $this->defaultPath;
@@ -36,7 +36,7 @@ class FileUploadService
         }
     }
 
-    public function delete(Model $model, ?string $field = null, ?string $path = null): void
+    public function eliminar(Model $model, ?string $field = null, ?string $path = null): void
     {
         $field = $field ?? $this->defaultField;
         $path = $path ?? $this->defaultPath;

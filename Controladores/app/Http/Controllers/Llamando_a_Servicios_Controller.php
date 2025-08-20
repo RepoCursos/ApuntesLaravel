@@ -16,20 +16,20 @@ class Llamando_a_Servicios_Controller extends Controller
     public function store(EquipoRequest $request): RedirectResponse
     {
         $equipo = Equipo::create($request->all());
-        $this->fileUploadService->upload($request, $equipo);
+        $this->fileUploadService->guardar($request, $equipo);
         return redirect()->route('admin.equipo.index')->with('success', __('view.datos_creado'));
     }
 
     public function update(EquipoRequest $request, Equipo $equipo): RedirectResponse
     {
-        $this->fileUploadService->update($request, $equipo);
+        $this->fileUploadService->actualizar($request, $equipo);
         $equipo->update($request->input());
         return redirect()->route('admin.equipo.index')->with('success', __('view.datos_actualizado'));
     }
 
     public function destroy(Equipo $equipo)
     {
-        $this->fileUploadService->delete($equipo);
+        $this->fileUploadService->eliminar($equipo);
         $equipo->delete();
         return redirect()->route('admin.equipo.index')->with('danger', __('view.datos_eliminado'));
     }

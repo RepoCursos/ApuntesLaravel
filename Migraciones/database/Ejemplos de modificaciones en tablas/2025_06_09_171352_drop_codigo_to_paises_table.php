@@ -1,5 +1,5 @@
 <?php
-
+//Video: https://www.youtube.com/watch?v=IA1yfW9T4u4&list=PLX64KYDfSBMvxqMDVoYtzymAAnr_B7xbA&index=28
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;

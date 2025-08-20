@@ -48,7 +48,7 @@ return new class extends Migration
             //https://laravel.com/docs/12.x/validation#available-validation-rules
             $table->string('Campos con reglas')->required()->nullable();//Etc.
             
-            //Como modificar de la configuracion de base de datos MySql y MariaDB
+            //AVANZADO: Como modificar de la configuracion de base de datos MySql y MariaDB
             /* Motores de almacenamiento */
             /* InnoDB: Motor por defecto en MySQL y MariaDB.
     								  Soporta transacciones (BEGIN, COMMIT, ROLLBACK)
@@ -69,13 +69,5 @@ return new class extends Migration
             */
             $table->collaction = 'utf8_general_ci'; //Defaullt MySql
         });
-    }
-
-    /**
-     * Reverse the migrations.
-     */
-    public function down(): void
-    {
-        Schema::dropIfExists('notes');
     }
 };
